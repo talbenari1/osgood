@@ -58,21 +58,26 @@ fn build_v8() -> PathBuf {
 fn compile_wrappers(v8_dir: PathBuf) {
     let include_dir = v8_dir.join("include");
 
-    println!("cargo:rerun-if-changed=src/wrapper.cpp");
+    println!("cargo:rerun-if-changed=src/binding/context.cpp");
+    println!("cargo:rerun-if-changed=src/binding/isolate.cpp");
+    println!("cargo:rerun-if-changed=src/binding/main.cpp");
+    println!("cargo:rerun-if-changed=src/binding/module.cpp");
+    println!("cargo:rerun-if-changed=src/binding/script.cpp");
+    println!("cargo:rerun-if-changed=src/binding/value.cpp");
 
     cc::Build::new()
         .cpp(true)
         .warnings(false)
         .flag("--std=c++14")
         .include(include_dir)
-        .file("src/wrapper.cpp")
-        .compile("libwrapper.a");
+        .file("src/binding/main.cpp")
+        .compile("libbinding.a");
 }
 
 fn generate_bindings(v8_dir: PathBuf) {
     println!("cargo:rustc-link-lib=v8_libbase");
-    println!("cargo:rustc-link-lib=v8_libplatform");
     println!("cargo:rustc-link-lib=v8_monolith");
+    println!("cargo:rustc-link-lib=v8_libplatform");
     println!("cargo:rustc-link-lib=c++");
     println!(
         "cargo:rustc-link-search={}/out.gn/x64.release/obj",
@@ -85,8 +90,12 @@ fn generate_bindings(v8_dir: PathBuf) {
 
     let bindings = bindgen::Builder::default()
         .generate_comments(true)
-        .header("src/wrapper.cpp")
-        .rust_target(bindgen::RustTarget::Nightly)
+        .header("src/binding/context.cpp")
+        .header("src/binding/isolate.cpp")
+        .header("src/binding/script.cpp")
+        .header("src/binding/module.cpp")
+        .header("src/binding/value.cpp")
+        // .rust_target(bindgen::RustTarget::Stable)
         .clang_arg("-x")
         .clang_arg("c++")
         .clang_arg("--std=c++14")
@@ -95,12 +104,19 @@ fn generate_bindings(v8_dir: PathBuf) {
         .opaque_type("std::.*")
         .whitelist_type("std::unique_ptr\\<v8::Platform\\>")
         .whitelist_type("v8::.*")
+        .opaque_type("v8::platform::.*")
+        .opaque_type("v8::JitCodeEvent.*")
         .blacklist_type("std::basic_string.*")
         .whitelist_function("v8::.*")
-        .whitelist_function("osgood::.*")
+        .whitelist_function("context::.*")
+        .whitelist_function("isolate::.*")
+        .whitelist_function("platform::.*")
+        .whitelist_function("script::.*")
+        .whitelist_function("module::.*")
+        .whitelist_function("value::.*")
         .whitelist_var("v8::.*")
         // Re-structure the modules a bit and hide the "root" module
-        .raw_line("#[doc(hidden)]")
+        // .raw_line("#[doc(hidden)]")
         // .generate_inline_functions(true)
         .enable_cxx_namespaces()
         .derive_debug(true)

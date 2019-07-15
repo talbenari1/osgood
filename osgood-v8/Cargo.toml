@@ -5,6 +5,7 @@ authors = ["Intrinsic <hello@intrinsic.com>"]
 edition = "2018"
 
 [dependencies]
+lazy_static = "1.3.0"
 
 [build-dependencies]
 bindgen = "0.42.2"
